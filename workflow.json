@@ -1,0 +1,817 @@
+{
+  "name": "Restaurant Digital Transformation",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -1728,
+        -48
+      ],
+      "id": "68341778-4161-4c15-89ba-65ccbfb5f754",
+      "name": "Telegram Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=صنّف رسالة عميل المطعم بالمصري أو الإنجليزي.\n\n- Questions Expert لسؤال عن المنيو أو الأسعار أو المواعيد.\n- Orders Expert لطلب أوردر أو تعديله أو تأكيده أو إلغائه أو متابعته.\n- Generalist للتحية أو الشكر أو الكلام العام.\n\nرجّع JSON فيه مفتاح employee فقط. مثال: {\"employee\":\"Orders Expert\"}\n\nرسالة العميل:\n{{ JSON.stringify($json.message?.text ?? $json.message?.caption ?? '') }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1472,
+        -48
+      ],
+      "id": "802a4d8b-2801-4fad-94bf-062d15ba47f4",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        224
+      ],
+      "id": "930dff0a-02c8-478b-a4c1-28cbe26af66c",
+      "name": "OpenRouter Chat Model"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"employee\": {\n      \"type\": \"string\",\n      \"description\": \"The route selected for the customer's message.\",\n      \"enum\": [\"Questions Expert\", \"Orders Expert\", \"Generalist\"]\n    }\n  },\n  \"required\": [\"employee\"],\n  \"additionalProperties\": false\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1280,
+        240
+      ],
+      "id": "b1175603-f346-4009-a6d2-ca189f7d4e5a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.employee }}",
+                    "rightValue": "Questions Expert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "464ebd4b-a914-4fb3-9625-d924e9c7bc40"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Questions"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b4ce3090-a25c-4550-b7b7-3bde58de739c",
+                    "leftValue": "={{ $json.output.employee }}",
+                    "rightValue": "Orders Expert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Orders"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "777e9f2b-01eb-4f7a-8f9b-55b260ce72c5",
+                    "leftValue": "={{ $json.output.employee }}",
+                    "rightValue": "Generalist",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "General"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1200,
+        -64
+      ],
+      "id": "fc17c365-9895-4db8-a547-eaefc821a3d5",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d028fa23-c18c-459e-b48f-cd1d1ae01e76",
+              "name": "systemPrompt",
+              "value": "إنت بترد على التحية والشكر والرسائل العامة لعملاء مطعم ركن محمد. رد بالمصري لو العميل بيكلمك بالعربي، وبالإنجليزي لو بيكلمك بالإنجليزي. خليك ودود ومختصر.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -992,
+        224
+      ],
+      "id": "b975ef0c-822b-4dc8-ad7a-7fdd357777de",
+      "name": "General System Prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0257c475-f5ab-4574-a893-208ed94ae50f",
+              "name": "systemPrompt",
+              "value": "إنت مسؤول عن طلبات مطعم ركن محمد. رد بالعامية المصرية لو العميل بيكلمك بالعربي، وبإنجليزي بسيط لو بيكلمك بالإنجليزي. خليك ودود ومختصر، واسأل عن معلومة ناقصة واحدة كل مرة.  **أوردر جديد** - اجمع الأصناف والكميات، واسم العميل، ورقم تليفونه، وعنوان التوصيل. استخدم التفاصيل اللي قالها بالفعل. - راجع الأصناف والأسعار في `restaurant_knowledge_base`. احسب إجمالي الأصناف، واذكر رسوم التوصيل بس لو متأكد منها. - اعرض ملخص الأوردر واطلب تأكيد واضح. لو العميل عدّل حاجة، اعرض الملخص بعد التعديل. لو ألغى قبل التسجيل، اقفل الطلب من غير ما تضيف صف. - بعد التأكيد، استخدم `code_tool` عشان تجيب رقم الأوردر، وبعدها استخدم `orders_sheet_write_tool` عشان تسجّل الأوردر مرة واحدة بحالة `In Kitchen`. ابعت رقم الأوردر للعميل بعد ما الأداة تأكد نجاح التسجيل.  **متابعة أوردر** - استخدم رقم الأوردر لو العميل قاله بالفعل، أو اسأله عنه. استخدم `orders_sheet_read_tool` وابعت الحالة المسجلة بعد التحقق إن الأوردر يخص العميل. لو ملقتش الأوردر، اطلب منه يراجع الرقم.  **إلغاء أوردر متسجّل** - راجع رقم الأوردر وحالته وتأكد إنه يخص العميل. اطلب تأكيد الإلغاء، وبعد التأكيد استخدم `order_sheet_cancel_tool` لو سياسة المطعم تسمح بالإلغاء في الحالة دي. أكد الإلغاء للعميل بعد نجاح الأداة.  لو أي أداة فشلت، قول للعميل إنك مقدرتش تتأكد من العملية. متكررش التسجيل تلقائيًا لو النتيجة مش واضحة.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -960,
+        -16
+      ],
+      "id": "a78d83c4-63b8-4b43-bde3-9dd9618fcdbb",
+      "name": "Orders  System Prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "41e556f3-83f0-4064-a185-2a2937c33757",
+              "name": "systemPrompt",
+              "value": "إنت بترد على أسئلة عملاء مطعم ركن محمد. لو العميل كلمك بالعربي، رد بالمصري الطبيعي. لو كلمك بالإنجليزي، رد بالإنجليزي. ابدأ بالإجابة على سؤاله مباشرة.\n\nلو سأل عن قسم، اعرض كل الأصناف اللي فيه، كل صنف في سطر باسمه وسعره ووصفه. لو سأل عن سعر صنف بعينه، قول سعره مباشرة. لو طلب المنيو كله، اعرض الأقسام الأربعة. استخدم الأسعار والوصف من القائمة دي. لو سأل عن معلومة مش مذكورة، قول إنها مش مؤكدة عندك من غير تخمين.\n\nالأسعار بالجنيه المصري.\n\nبرجر\n- كلاسيك برجر — ١٤٥ جنيه — برجر لحم مع خس وطماطم وصوص البيت.\n- تشيز برجر — ١٦٥ جنيه — برجر لحم مع جبنة شيدر ومخلل.\n\nساندوتشات فراخ\n- كريسبي تشيكن — ١٣٥ جنيه — فراخ مقرمشة مع خس ومايونيز.\n- سبايسي تشيكن — ١٤٥ جنيه — فراخ مقرمشة بصوص حار.\n\nإضافات\n- بطاطس مقلية — ٤٥ جنيه — علبة وسط.\n- حلقات بصل — ٥٥ جنيه — ٦ قطع مقرمشة.\n\nمشروبات\n- ليمون بالنعناع — ٤٠ جنيه — كوب ليمون بالنعناع.\n- مياه معدنية — ١٥ جنيه — زجاجة ٥٠٠ مل.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -944,
+        -240
+      ],
+      "id": "b10a396d-4a37-451e-81fc-890f88b8b02a",
+      "name": "Questions System Prompt1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "={{ $json.systemPrompt }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -640,
+        -48
+      ],
+      "id": "6d7c044b-9cb9-4769-bdfd-759483af7714",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -656,
+        224
+      ],
+      "id": "9b5e67f7-c7d4-4e74-8993-081e1363f2c8",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-3.5-super-vl:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        256
+      ],
+      "id": "c6cb8c6e-f54a-4989-b558-2122c3cc52a4",
+      "name": "OpenRouter Chat Model1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_ORDERS_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Order ID",
+              "lookupValue": "={{ $fromAI(\"order_id\") }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        64
+      ],
+      "id": "03adc7c6-7f3d-41de-9f65-f24126436192",
+      "name": "orders_sheet_read_tool"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_ORDERS_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Time": "={{ $now.setZone('Africa/Cairo').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "Item": "={{ $fromAI(\"order_item\") }}",
+            "Price": "={{ $fromAI(\"order_price\") }}",
+            "Order ID": "={{ $fromAI(\"order_id\") }}",
+            "Phone Number": "={{ $fromAI(\"client_phone\") }}",
+            "Address": "={{ $fromAI(\"client_address\") }}",
+            "Status": "=In Kitchen",
+            "Name": "={{ $fromAI(\"client_name\") }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        64,
+        96
+      ],
+      "id": "0723aaef-5910-4d28-a4f5-52f59e780182",
+      "name": "Append row in sheet in Google Sheets"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_ORDERS_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Cancelled",
+            "Order ID": "={{ $fromAI(\"order_id\") }}"
+          },
+          "matchingColumns": [
+            "Order ID"
+          ],
+          "schema": [
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -128,
+        112
+      ],
+      "id": "8f11e07a-ade0-4ddb-b44e-373626f4e950",
+      "name": "Update row in sheet in Google Sheets"
+    },
+    {
+      "parameters": {
+        "description": "Generate a 4-digit order ID after the customer confirms a new order. Pass the returned ID to orders_sheet_write_tool. No input is needed.",
+        "jsCode": "const orderId = Math.floor(1000 + Math.random() * 9000);\nreturn orderId.toString();"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        240
+      ],
+      "id": "519f7ff5-e0ef-4a98-983f-21d7549c68fa",
+      "name": "Code Tool"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "ابحث في منيو مطعم ركن محمد ومعلوماته. استخدم الأداة عشان تتأكد من الأصناف والأسعار والمكونات والتوافر، أو تجاوب عن المواعيد والعنوان والتوصيل. لو النتيجة مفيهاش المعلومة المطلوبة، قول إنها محتاجة تأكيد من المطعم.",
+        "tableName": {
+          "__rl": true,
+          "value": "restaurant_documents",
+          "mode": "list",
+          "cachedResultName": "restaurant_documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -416,
+        256
+      ],
+      "id": "86399fd3-9447-4e7c-8201-a296426e3490",
+      "name": "Supabase Vector Store"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        416
+      ],
+      "id": "f01e43bc-b0fe-4e2a-89e8-8e15bff3be79",
+      "name": "Embeddings Google Gemini"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -272,
+        -48
+      ],
+      "id": "ef659cf1-3c17-4a38-8b94-34e64d02e508",
+      "name": "Send a text message"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Questions System Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Orders  System Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General System Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General System Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orders  System Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Questions System Prompt1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "orders_sheet_read_tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": []
+}
